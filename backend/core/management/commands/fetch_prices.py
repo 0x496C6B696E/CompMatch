@@ -68,7 +68,9 @@ class Command(BaseCommand):
                 stock = "stokta" if offer.in_stock else "stok yok"
                 self.stdout.write(f"  ✓  {product.name} -> {offer.title[:70]} | {offer.price} {offer.currency} | {stock} ({sim:.2f})")
                 if not opts["dry_run"]:
+                    # Stratejiler linki zaten temizler (stores.safe_url); yazarken yine de yalnızca http(s) kabul.
+                    url = offer.url[:200] if offer.url.lower().startswith(("http://", "https://")) else ""
                     model.objects.update_or_create(**{fk: product}, store=store, defaults=dict(
-                        price=offer.price, currency=offer.currency[:3], url=offer.url[:200], in_stock=offer.in_stock))
+                        price=offer.price, currency=offer.currency[:3], url=url, in_stock=offer.in_stock))
                     total += 1
         self.stdout.write(self.style.SUCCESS(f"{'Önizleme bitti' if opts['dry_run'] else f'{total} fiyat kaydı güncellendi'}."))
