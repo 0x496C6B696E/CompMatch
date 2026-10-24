@@ -44,6 +44,14 @@ class ServicesTest(TestCase):
         self.assertEqual(len(picks), 1)  # tek laptop -> tek öneri, tekrar yok
         self.assertEqual(picks[0]["meets"], "rec")
 
+        # Sadece min'i karşılayan daha ucuz laptop: value olur, önerilen L1'e düşer, pro için aday kalmaz.
+        l2 = Laptop.objects.create(name="L2", brand="X", cpu="c", gpu="g", ram_gb=8, ssd_gb=256,
+                                   cpu_score=60, gpu_score=60, weight_kg=Decimal("2"))
+        LaptopPrice.objects.create(laptop=l2, store=self.local, price=1500, currency="AZN")
+        picks = pick_laptops(req, self.s)
+        self.assertEqual([(p["tier"], p["laptop"].name, p["meets"]) for p in picks],
+                         [("value", "L2", "min"), ("recommended", "L1", "rec")])
+
     def test_build_pc_is_compatible(self):
         def mk(cat, name, **kw):
             c = Component.objects.create(category=cat, name=name, brand="B", weight_kg=Decimal("1"), **kw)

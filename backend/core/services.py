@@ -115,12 +115,15 @@ def pick_laptops(req, settings):
         lp._cost = _cost(lp, settings)
         lp._perf = lp.cpu_score + lp.gpu_score
 
-    min_ok = sorted((l for l in laptops if meets(l, req["min"])), key=lambda l: l._cost)
-    rec_ok = sorted((l for l in laptops if meets(l, req["rec"])), key=lambda l: l._cost)
+    min_ok = [l for l in laptops if meets(l, req["min"])]
+    rec_ok = [l for l in laptops if meets(l, req["rec"])]
+    by_cost = lambda pool: sorted(pool, key=lambda l: l._cost)
+    by_perf = lambda pool: sorted(pool, key=lambda l: -l._perf)
 
     picks, used = [], set()
 
     def take(tier, label, candidates):
+        """Aday listesinde (öncelik sırasıyla) henüz seçilmemiş ilk laptopu al."""
         for c in candidates:
             if c.pk not in used:
                 used.add(c.pk)
@@ -130,9 +133,9 @@ def pick_laptops(req, settings):
                 })
                 return
 
-    take("value", "Fiyat / Performans", min_ok)
-    take("recommended", "Tam Uyumlu / Önerilen", rec_ok or min_ok)
-    take("pro", "Üst Segment / Pro", sorted(rec_ok or min_ok, key=lambda l: -l._perf))
+    take("value", "Fiyat / Performans", by_cost(min_ok))
+    take("recommended", "Tam Uyumlu / Önerilen", by_cost(rec_ok) + by_cost(min_ok))
+    take("pro", "Üst Segment / Pro", by_perf(rec_ok) + by_perf(min_ok))
     return picks
 
 
