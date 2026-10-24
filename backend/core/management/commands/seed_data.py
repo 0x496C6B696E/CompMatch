@@ -8,6 +8,7 @@ Hiç süper kullanıcı yoksa admin için test/test oluşturur (yalnızca localh
 from decimal import Decimal
 from urllib.parse import quote_plus
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -483,10 +484,12 @@ class Command(BaseCommand):
                 category=cat, brand=brand, weight_kg=Decimal(weight), **extra))
             self._prices(ComponentPrice, "component", comp, stores, i, azn, usd, name)
 
+        # Yalnızca DEBUG (localhost) modunda ve hiç süper kullanıcı yokken: geliştirme hesabı test/test.
+        # DJANGO_DEBUG=0 ile çalışan bir kurulumda asla oluşturulmaz; orada `createsuperuser` kullanın.
         User = get_user_model()
-        if not User.objects.filter(is_superuser=True).exists():
+        if settings.DEBUG and not User.objects.filter(is_superuser=True).exists():
             User.objects.create_superuser("test", "", "test")  # ponytail: localhost geliştirme hesabı
-            self.stdout.write("Admin hesabı oluşturuldu: test / test")
+            self.stdout.write("Geliştirme admin hesabı oluşturuldu (kullanıcı adı: test; şifre README'de).")
 
         self.stdout.write(self.style.SUCCESS(
             f"Seed tamam: {ProfessionCategory.objects.count()} kategori, {Profession.objects.count()} meslek, "
