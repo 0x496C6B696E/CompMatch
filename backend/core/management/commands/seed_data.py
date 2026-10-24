@@ -26,19 +26,33 @@ from core.models import (
     Store,
 )
 
-# name, kind, website, search url template, kg kargo (sadece global)
+# name, kind, website, search url template, kg kargo (sadece global), scraper anahtarı (core/scrapers/stores.py)
 STORES = [
-    ("Kontakt Home", Store.LOCAL, "https://kontakt.az", "https://kontakt.az/search?q={q}", None),
-    ("İrşad", Store.LOCAL, "https://irshad.az", "https://irshad.az/search?q={q}", None),
-    ("Baku Electronics", Store.LOCAL, "https://www.bakuelectronics.az", "https://www.bakuelectronics.az/search?q={q}", None),
-    ("iComp", Store.LOCAL, "https://icomp.az", "https://icomp.az/search?q={q}", None),
-    ("CompStore", Store.LOCAL, "https://compstore.az", "https://compstore.az/search?q={q}", None),
-    ("Amazon", Store.GLOBAL, "https://www.amazon.com", "https://www.amazon.com/s?k={q}", Decimal("12.00")),
-    ("eBay", Store.GLOBAL, "https://www.ebay.com", "https://www.ebay.com/sch/i.html?_nkw={q}", Decimal("14.00")),
-    ("Newegg", Store.GLOBAL, "https://www.newegg.com", "https://www.newegg.com/p/pl?d={q}", Decimal("13.00")),
-    ("B&H", Store.GLOBAL, "https://www.bhphotovideo.com", "https://www.bhphotovideo.com/c/search?q={q}", Decimal("11.00")),
+    ("Kontakt Home", Store.LOCAL, "https://kontakt.az", "https://kontakt.az/search?q={q}", None, ""),  # robots yasak, CSV
+    ("İrşad", Store.LOCAL, "https://irshad.az", "https://irshad.az/az/mehsullar?q={q}", None, "irshad_search"),
+    ("Baku Electronics", Store.LOCAL, "https://www.bakuelectronics.az", "https://www.bakuelectronics.az/axtaris-neticesi?q={q}", None, "bakuelectronics_sitemap"),
+    ("iComp", Store.LOCAL, "https://icomp.az", "https://icomp.az/?search={q}", None, "icomp_sitemap"),
+    ("CompStore", Store.LOCAL, "https://compstore.az", "https://compstore.az/?search={q}", None, "compstore_sitemap"),
+    ("Amazon", Store.GLOBAL, "https://www.amazon.com", "https://www.amazon.com/s?k={q}", Decimal("12.00"), ""),
+    ("eBay", Store.GLOBAL, "https://www.ebay.com", "https://www.ebay.com/sch/i.html?_nkw={q}", Decimal("14.00"), ""),
+    ("Newegg", Store.GLOBAL, "https://www.newegg.com", "https://www.newegg.com/p/pl?d={q}", Decimal("13.00"), ""),
+    ("B&H", Store.GLOBAL, "https://www.bhphotovideo.com", "https://www.bhphotovideo.com/c/search?q={q}", Decimal("11.00"), ""),
 ]
 SEARCH_URL = {s[0]: s[3] for s in STORES}
+
+# GPU değerleri aşağıdaki tablolarda 3DMark Time Spy ölçeğindedir; kayıt sırasında ts_to_g3d() ile
+# PassMark G3D Mark ölçeğine çevrilir (veritabanı ve fetch_benchmarks bu ölçeği kullanır).
+# Çapa noktaları: (Time Spy, G3D) — Iris Xe, Radeon 680M, RTX 3050, 4050 Laptop, 4060, 4070, 4080, 4090.
+_TS_G3D = [(0, 0), (1700, 2700), (2800, 4300), (6300, 12700), (8500, 14200), (10700, 19500),
+           (17800, 26800), (28000, 34400), (36000, 38500), (40000, 41000)]
+
+
+def ts_to_g3d(v):
+    for (x0, y0), (x1, y1) in zip(_TS_G3D, _TS_G3D[1:]):
+        if v <= x1:
+            return int(round(y0 + (y1 - y0) * (v - x0) / (x1 - x0)))
+    x0, y0 = _TS_G3D[-1]
+    return int(round(y0 + (v - x0) * 0.6))
 
 # key, icon, (az, ru, en)
 CATEGORIES = [
@@ -442,9 +456,9 @@ class Command(BaseCommand):
         CustomsSettings.load()
 
         stores = {}
-        for name, kind, website, _tpl, ship in STORES:
+        for name, kind, website, tpl, ship, scraper in STORES:
             stores[name], _ = Store.objects.update_or_create(
-                name=name, defaults=dict(kind=kind, website=website, shipping_per_kg_usd=ship))
+                name=name, defaults=dict(kind=kind, website=website, search_url=tpl, shipping_per_kg_usd=ship, scraper=scraper))
 
         categories = {}
         for order, (key, icon, names) in enumerate(CATEGORIES):
@@ -465,6 +479,7 @@ class Command(BaseCommand):
 
         for name, icon, group, profs, blurbs, req in PROGRAMS:
             mc, rc, mg, rg, mr, rr, ms, rs = req
+            mg, rg = ts_to_g3d(mg), ts_to_g3d(rg)
             program, _ = Program.objects.update_or_create(name=name, defaults=dict(
                 icon=icon, group=groups[group], **_named("blurb", blurbs),
                 min_cpu_score=mc, rec_cpu_score=rc, min_gpu_score=mg, rec_gpu_score=rg,
@@ -474,12 +489,14 @@ class Command(BaseCommand):
 
         for i, (name, brand, cpu, gpu, ram, ssd, cs, gs, screen, weight, (azn, usd)) in enumerate(LAPTOPS):
             laptop, _ = Laptop.objects.update_or_create(name=name, defaults=dict(
-                brand=brand, cpu=cpu, gpu=gpu, ram_gb=ram, ssd_gb=ssd, cpu_score=cs, gpu_score=gs,
+                brand=brand, cpu=cpu, gpu=gpu, ram_gb=ram, ssd_gb=ssd, cpu_score=cs, gpu_score=ts_to_g3d(gs),
                 screen=screen, weight_kg=Decimal(weight),
             ))
             self._prices(LaptopPrice, "laptop", laptop, stores, i, azn, usd, name)
 
         for i, (cat, name, brand, extra, weight, (azn, usd)) in enumerate(COMPONENTS):
+            if cat == Component.GPU:
+                extra = {**extra, "score": ts_to_g3d(extra["score"])}
             comp, _ = Component.objects.update_or_create(name=name, defaults=dict(
                 category=cat, brand=brand, weight_kg=Decimal(weight), **extra))
             self._prices(ComponentPrice, "component", comp, stores, i, azn, usd, name)

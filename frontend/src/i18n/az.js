@@ -123,7 +123,7 @@ export default {
   "err.programs": "Proqramlar yüklənmədi.",
   "err.match": "Seçim alınmadı. Yenidən cəhd et.",
   "err.catalog": "Siyahı yüklənmədi.",
-  "footnote": "Qiymətlər admin panelindən daxil edilmiş nümunə məlumatlardır; mağaza linkləri axtarış səhifəsinə aparır.",
+  "footnote": "iComp, CompStore, Baku Electronics və İrşad qiymətləri mağaza saytlarından avtomatik çəkilir (mağaza adının üzərinə gəl: tarix). Kontakt Home və xarici mağazalar əl ilə / CSV ilə daxil edilmiş nümunə məlumatdır.",
 
   "catalog.laptops.title": "Bütün noutbuklar",
   "catalog.laptops.hint": "Markanı seç, kartı aç: hansı işlər üçün uyğun olduğunu və harada ucuz olduğunu görəcəksən.",

@@ -4,13 +4,14 @@ import { useLang } from "../i18n/index.jsx";
 
 const thresholdAzn = (settings) => Number(settings.duty_free_limit_usd) * Number(settings.usd_azn_rate);
 
-function StoreName({ store, url }) {
+function StoreName({ store, url, updatedAt }) {
+  const title = updatedAt ? new Date(updatedAt).toLocaleDateString() : undefined;
   return url ? (
-    <a href={url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 text-snow hover:underline">
+    <a href={url} target="_blank" rel="noreferrer" title={title} className="inline-flex max-w-full items-center gap-1 text-snow hover:underline">
       <span className="truncate">{store}</span> <ExternalLink size={12} className="shrink-0 text-mist" />
     </a>
   ) : (
-    <span className="truncate text-snow">{store}</span>
+    <span className="truncate text-snow" title={title}>{store}</span>
   );
 }
 
@@ -50,12 +51,12 @@ function Panel({ title, best, savings, children }) {
   );
 }
 
-function Row({ store, url, inStock, amount, children }) {
+function Row({ store, url, inStock, amount, updatedAt, children }) {
   const { t } = useLang();
   return (
     <div className="flex items-center gap-3">
       <span className="flex w-24 shrink-0 flex-col sm:w-28">
-        <StoreName store={store} url={url} />
+        <StoreName store={store} url={url} updatedAt={updatedAt} />
         {!inStock && <span className="text-xs text-mist">{t("price.outOfStock")}</span>}
       </span>
       {children}
@@ -110,7 +111,7 @@ export default function PriceCompare({ prices, settings }) {
           <ul className="mt-4 space-y-3 text-sm">
             {local.map((o) => (
               <li key={o.store}>
-                <Row store={o.store} url={o.url} inStock={o.in_stock} amount={o.price_azn}>
+                <Row store={o.store} url={o.url} inStock={o.in_stock} amount={o.price_azn} updatedAt={o.updated_at}>
                   <CostBar total={Number(o.price_azn)} max={max} dim={!o.in_stock} segments={[{ v: 1, cls: "bg-cyan-p" }]} />
                 </Row>
               </li>
@@ -126,7 +127,7 @@ export default function PriceCompare({ prices, settings }) {
           <ul className="mt-4 space-y-3 text-sm">
             {glob.map((o) => (
               <li key={o.store}>
-                <Row store={o.store} url={o.url} inStock={o.in_stock} amount={o.total_azn}>
+                <Row store={o.store} url={o.url} inStock={o.in_stock} amount={o.total_azn} updatedAt={o.updated_at}>
                   <CostBar
                     total={Number(o.total_azn)}
                     max={max}

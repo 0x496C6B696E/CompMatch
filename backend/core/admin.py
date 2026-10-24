@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 
 from .models import (
@@ -78,15 +79,22 @@ class ProgramAdmin(admin.ModelAdmin):
 
 @admin.register(Store)
 class StoreAdmin(admin.ModelAdmin):
-    list_display = ("name", "kind", "website", "shipping_per_kg_usd")
-    list_filter = ("kind",)
+    list_display = ("name", "kind", "website", "scraper", "shipping_per_kg_usd")
+    list_filter = ("kind", "scraper")
     search_fields = ("name",)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name == "scraper":
+            from .scrapers.stores import SCRAPER_CHOICES
+            kwargs["widget"] = forms.Select(choices=SCRAPER_CHOICES)
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
 
 
 class LaptopPriceInline(admin.TabularInline):
     model = LaptopPrice
     extra = 1
-    fields = ("store", "price", "currency", "in_stock", "url")
+    fields = ("store", "price", "currency", "in_stock", "url", "updated_at")
+    readonly_fields = ("updated_at",)
     autocomplete_fields = ("store",)
 
 
@@ -108,7 +116,8 @@ class LaptopAdmin(admin.ModelAdmin):
 class ComponentPriceInline(admin.TabularInline):
     model = ComponentPrice
     extra = 1
-    fields = ("store", "price", "currency", "in_stock", "url")
+    fields = ("store", "price", "currency", "in_stock", "url", "updated_at")
+    readonly_fields = ("updated_at",)
     autocomplete_fields = ("store",)
 
 

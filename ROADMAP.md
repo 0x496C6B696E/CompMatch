@@ -12,10 +12,13 @@
 
 ## Faz 2 — Gerçek veri
 
-- [ ] Mağaza fiyatlarını CSV/Excel'den toplu içe aktarma (admin aksiyonu).
-- [ ] Kontakt, İrşad, iComp için fiyat/stok çekici (scraper) komutları; "son güncelleme" zamanı.
+- [x] **Benchmark skorları:** `fetch_benchmarks` PassMark CPU Mark / G3D Mark listelerini (haftalık önbellek) indirip laptop ve parça skorlarını ada göre günceller. 28 laptop + 15 CPU/GPU'dan yalnızca 5 tanesi (Apple GPU, "AMD Radeon Graphics" gibi jenerik adlar) eşleşmiyor.
+- [x] **Fiyat/stok çekici:** `fetch_prices` — iComp ve CompStore (sitemap → ürün sayfası JSON-LD), Baku Electronics (sitemap → JSON-LD), İrşad (arama + ürün sayfasından CPU/GPU doğrulama). robots.txt ve Crawl-delay'e uyar, sayfaları önbellekler, `updated_at` tutar.
+- [x] **CSV içe/dışa aktarma:** `import_prices --template` ve `import_prices dosya.csv` — Kontakt Home (robots.txt aramayı yasaklıyor, bot koruması), Amazon/eBay/Newegg/B&H (bot koruması) ve Kasa+PSU paketleri için.
 - [ ] USD/AZN kurunu Mərkəzi Bank'tan otomatik çekme (`update_rates` komutu).
+- [ ] eBay Browse API ile global fiyat (API anahtarı gerekir).
 - [ ] Ürün görselleri ve resmi ürün sayfası linkleri.
+- [ ] Zamanlayıcı (Windows Görev Zamanlayıcı / cron) ile gecelik `fetch_prices` + haftalık `fetch_benchmarks`.
 
 ## Faz 3 — Kullanıcı özellikleri
 

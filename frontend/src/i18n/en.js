@@ -123,7 +123,7 @@ export default {
   "err.programs": "Could not load programs.",
   "err.match": "Matching failed. Try again.",
   "err.catalog": "Could not load the list.",
-  "footnote": "Prices are sample data entered in the admin panel; store links open a search page.",
+  "footnote": "iComp, CompStore, Baku Electronics and İrşad prices are collected from the store sites automatically (hover a store name for the date). Kontakt Home and overseas stores are sample data entered by hand / CSV.",
 
   "catalog.laptops.title": "All laptops",
   "catalog.laptops.hint": "Pick a brand and open a card to see which jobs it suits and where it's cheapest.",

@@ -1,8 +1,9 @@
 // Sayısal skoru "Sadə / Orta / Güclü / Çox güclü" seviyesine çevirir.
+// Ölçek: PassMark CPU Mark ve PassMark G3D Mark (backend fetch_benchmarks ile aynı kaynak).
 // ponytail: sabit eşikler; katalog büyüyünce yüzdelik dilime geçilebilir.
 const THRESHOLDS = {
   cpu_score: [12000, 22000, 34000],
-  gpu_score: [3000, 9000, 16000],
+  gpu_score: [5000, 15000, 25000],
   ram_gb: [12, 24, 48],
   ssd_gb: [400, 900, 1900],
 };

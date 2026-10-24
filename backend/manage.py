@@ -4,8 +4,9 @@ import os
 import sys
 
 # Windows konsolunda (cp1252) Türkçe karakterli çıktı için.
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8")
 
 
 def main():

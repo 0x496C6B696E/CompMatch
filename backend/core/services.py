@@ -123,16 +123,15 @@ def compare_prices(product, settings):
     local, global_ = [], []
     for p in product.prices.all():
         store = p.store
+        base = {"store": store.name, "url": p.url, "in_stock": p.in_stock,
+                "updated_at": p.updated_at.isoformat() if p.updated_at else None}
         if store.kind == Store.LOCAL:
             price_azn = p.price if p.currency == "AZN" else p.price * settings.usd_azn_rate
-            local.append({
-                "store": store.name, "url": p.url, "in_stock": p.in_stock,
-                "price_azn": _q(price_azn),
-            })
+            local.append({**base, "price_azn": _q(price_azn)})
         else:
             price_usd = p.price if p.currency == "USD" else p.price / settings.usd_azn_rate
             cost = landed_cost(price_usd, product.weight_kg, settings, store.shipping_per_kg_usd)
-            global_.append({"store": store.name, "url": p.url, "in_stock": p.in_stock, **cost})
+            global_.append({**base, **cost})
 
     local.sort(key=lambda o: (not o["in_stock"], o["price_azn"]))
     global_.sort(key=lambda o: (not o["in_stock"], o["total_azn"]))

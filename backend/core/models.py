@@ -84,11 +84,12 @@ class Program(models.Model):
     blurb_en = models.CharField("Kısa açıklama (EN)", max_length=120, blank=True)
     professions = models.ManyToManyField(Profession, related_name="programs", verbose_name="Meslekler")
 
-    # CPU/GPU skorları: PassMark CPU Mark ve 3DMark Time Spy ölçeğine yakın değerler.
-    min_cpu_score = models.PositiveIntegerField("Min CPU skoru", default=0)
-    rec_cpu_score = models.PositiveIntegerField("Önerilen CPU skoru", default=0)
-    min_gpu_score = models.PositiveIntegerField("Min GPU skoru", default=0)
-    rec_gpu_score = models.PositiveIntegerField("Önerilen GPU skoru", default=0)
+    # Skor ölçeği: PassMark CPU Mark (cpubenchmark.net) ve PassMark G3D Mark (videocardbenchmark.net).
+    # `fetch_benchmarks` komutu laptop/bileşen skorlarını bu listelerden günceller.
+    min_cpu_score = models.PositiveIntegerField("Min CPU skoru", default=0, help_text="PassMark CPU Mark")
+    rec_cpu_score = models.PositiveIntegerField("Önerilen CPU skoru", default=0, help_text="PassMark CPU Mark")
+    min_gpu_score = models.PositiveIntegerField("Min GPU skoru", default=0, help_text="PassMark G3D Mark")
+    rec_gpu_score = models.PositiveIntegerField("Önerilen GPU skoru", default=0, help_text="PassMark G3D Mark")
     min_ram_gb = models.PositiveIntegerField("Min RAM (GB)", default=8)
     rec_ram_gb = models.PositiveIntegerField("Önerilen RAM (GB)", default=16)
     min_ssd_gb = models.PositiveIntegerField("Min SSD (GB)", default=256)
@@ -111,6 +112,14 @@ class Store(models.Model):
     name = models.CharField("Mağaza", max_length=100, unique=True)
     kind = models.CharField("Tür", max_length=10, choices=KINDS)
     website = models.URLField("Web sitesi", blank=True)
+    search_url = models.CharField(
+        "Arama URL şablonu", max_length=200, blank=True,
+        help_text="{q} ürün adıyla değişir; fiyatı olmayan ürünler için link olarak kullanılır.",
+    )
+    scraper = models.CharField(
+        "Scraper", max_length=40, blank=True, default="",
+        help_text="fetch_prices komutunun bu mağaza için kullanacağı strateji (core/scrapers/stores.py). Boş = elle / CSV.",
+    )
     shipping_per_kg_usd = models.DecimalField(
         "KG başı kargo (USD)", max_digits=8, decimal_places=2, null=True, blank=True,
         help_text="Boş bırakılırsa gümrük ayarlarındaki varsayılan kullanılır (yalnızca global mağazalar).",
@@ -132,8 +141,8 @@ class Laptop(models.Model):
     gpu = models.CharField("Ekran kartı", max_length=100)
     ram_gb = models.PositiveIntegerField("RAM (GB)")
     ssd_gb = models.PositiveIntegerField("SSD (GB)")
-    cpu_score = models.PositiveIntegerField("CPU skoru")
-    gpu_score = models.PositiveIntegerField("GPU skoru")
+    cpu_score = models.PositiveIntegerField("CPU skoru", help_text="PassMark CPU Mark; fetch_benchmarks ile güncellenir.")
+    gpu_score = models.PositiveIntegerField("GPU skoru", help_text="PassMark G3D Mark; fetch_benchmarks ile güncellenir.")
     screen = models.CharField("Ekran", max_length=100, blank=True)
     weight_kg = models.DecimalField("Ağırlık (kg)", max_digits=5, decimal_places=2)
     image_url = models.URLField("Görsel URL", blank=True)
@@ -168,7 +177,7 @@ class Component(models.Model):
     category = models.CharField("Kategori", max_length=20, choices=CATEGORIES)
     name = models.CharField("Model", max_length=150, unique=True)
     brand = models.CharField("Marka", max_length=50)
-    score = models.PositiveIntegerField("Skor", default=0, help_text="CPU/GPU için performans skoru.")
+    score = models.PositiveIntegerField("Skor", default=0, help_text="CPU: PassMark CPU Mark, GPU: PassMark G3D Mark; fetch_benchmarks ile güncellenir.")
     capacity_gb = models.PositiveIntegerField("Kapasite (GB)", default=0, help_text="RAM/SSD için.")
     socket = models.CharField("Soket", max_length=20, blank=True, help_text="CPU ve anakart için (AM5, LGA1700...).")
     ram_type = models.CharField("RAM tipi", max_length=10, blank=True, help_text="RAM ve anakart için (DDR4, DDR5).")
@@ -196,6 +205,7 @@ class PriceBase(models.Model):
     currency = models.CharField("Para birimi", max_length=3, choices=CURRENCIES)
     url = models.URLField("Ürün linki", blank=True)
     in_stock = models.BooleanField("Stokta", default=True)
+    updated_at = models.DateTimeField("Son güncelleme", auto_now=True)
 
     class Meta:
         abstract = True
