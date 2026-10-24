@@ -70,12 +70,14 @@ class PassmarkTest(SimpleTestCase):
 
 class IrshadVerifyTest(SimpleTestCase):
     def test_product_page_must_mention_cpu_and_gpu(self):
-        page = "<div>Prosessor : Intel® Core™ i5-13420H</div><div>Qrafik yaddaş : NVIDIA® GeForce RTX™ 4050</div>"
+        page = ("<h1>Acer Nitro V 15 ANV15-51-529L</h1><div>Prosessor : Intel® Core™ i5-13420H</div>"
+                "<div>Qrafik yaddaş : NVIDIA® GeForce RTX™ 4050</div>")
         self.assertTrue(page_has_required(page, "Acer Nitro V 15 (i5-13420H / RTX 4050)"))
         self.assertFalse(page_has_required(page, "Acer Nitro V 15 (i7-13620H / RTX 4050)"))
         # Model token'ı olmayan ad boş doğrulama ile geçmemeli; M3 ≠ M5
         self.assertFalse(page_has_required("<p>Apple MacBook Air 13.6 M5</p>", "Apple MacBook Air 13 (M3, 16/512)"))
-        self.assertTrue(page_has_required("<p>Apple MacBook Air 13 M3 8 nüvəli CPU</p>", "Apple MacBook Air 13 (M3, 16/512)"))
+        self.assertTrue(page_has_required("<p>Apple MacBook Air 13 M3 8 nüvəli CPU, 512 GB SSD</p>", "Apple MacBook Air 13 (M3, 16/512)"))
+        self.assertFalse(page_has_required("<p>Apple MacBook Air 13 M3, 256 GB SSD</p>", "Apple MacBook Air 13 (M3, 16/512)"))  # başqa konfiq
         self.assertFalse(page_has_required("<p>anything</p>", "HP 15"))
 
 
