@@ -58,11 +58,20 @@ def _decimal(text):
 # --------------------------------------------------------------------------- #
 # İrşad: arama (+ ürün sayfasından CPU/GPU doğrulama)
 # --------------------------------------------------------------------------- #
-def page_has_required(page, product_name):
-    """Ürün sayfası metni adımızın CPU/GPU model token'larını (13420h, 4050...) içeriyor mu?"""
-    text = match.flat(re.sub(r"<[^>]+>", " ", page or ""))
+def _verifiable(product_name):
+    """Sayfada aranacak model token'ları (13420h, 4050, m3, macbook...). Boşsa doğrulama yapılamaz."""
     toks = [t for t in match.tokens(product_name) if t not in match.STOP]
-    return all(r in text for r in match.required(toks) if sum(c.isdigit() for c in r) >= 3)
+    return match.required(toks, capacity=False)
+
+
+def page_has_required(page, product_name):
+    """Ürün sayfası metni adımızın model token'larını içeriyor mu? Hiç token yoksa False (boş doğrulama yok)."""
+    req = _verifiable(product_name)
+    if not req:
+        return False
+    text = re.sub(r"<[^>]+>", " ", page or "")
+    page_tokens, flat = set(match.tokens(text)), match.flat(text)
+    return all(r in page_tokens or (sum(c.isdigit() for c in r) >= 3 and r in flat) for r in req)
 
 
 def irshad_search(product_name, max_pages=3):
@@ -85,7 +94,7 @@ def irshad_search(product_name, max_pages=3):
             offers.append(Offer(a.get_text(" ", strip=True), price, "AZN", safe_url(a.get("href"), url)))
 
     by_title = [o for o in offers if match.similarity(product_name, o.title) >= 0.75]
-    if by_title:
+    if by_title or not _verifiable(product_name):
         return by_title
     # Seri adı tutan adaylar (parantezsiz sorguya göre), ucuzdan pahalıya
     series = match.query_for(product_name)
