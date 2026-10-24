@@ -6,25 +6,82 @@ from django.db import models
 # aynı dört alanı paylaşır; services.py bu tuple üzerinden döner.
 REQ_FIELDS = ("cpu_score", "gpu_score", "ram_gb", "ssd_gb")
 
+# Site dilleri. Admin'den girilen başlıklar her dil için ayrı alanda tutulur.
+LANGS = ("az", "ru", "en")
+DEFAULT_LANG = "az"
 
-class Profession(models.Model):
-    name = models.CharField("Meslek", max_length=100, unique=True)
+
+def tr(obj, field, lang):
+    """Nesnenin alanını istenen dilde döndürür; boşsa Azerbaycanca'ya düşer."""
+    return getattr(obj, f"{field}_{lang}", "") or getattr(obj, f"{field}_{DEFAULT_LANG}", "")
+
+
+class ProfessionCategory(models.Model):
+    name_az = models.CharField("Ad (AZ)", max_length=100)
+    name_ru = models.CharField("Ad (RU)", max_length=100, blank=True)
+    name_en = models.CharField("Ad (EN)", max_length=100, blank=True)
     icon = models.CharField("Lucide ikon adı", max_length=50, default="Briefcase")
-    description = models.CharField("Açıklama", max_length=200, blank=True)
     order = models.PositiveSmallIntegerField("Sıra", default=0)
 
     class Meta:
-        ordering = ["order", "name"]
+        ordering = ["order", "name_az"]
+        verbose_name = "Meslek kategorisi"
+        verbose_name_plural = "Meslek kategorileri"
+
+    def __str__(self):
+        return self.name_az
+
+
+class Profession(models.Model):
+    category = models.ForeignKey(
+        ProfessionCategory, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="professions", verbose_name="Kategori",
+    )
+    name_az = models.CharField("Ad (AZ)", max_length=100, unique=True)
+    name_ru = models.CharField("Ad (RU)", max_length=100, blank=True)
+    name_en = models.CharField("Ad (EN)", max_length=100, blank=True)
+    description_az = models.CharField("Açıklama (AZ)", max_length=200, blank=True)
+    description_ru = models.CharField("Açıklama (RU)", max_length=200, blank=True)
+    description_en = models.CharField("Açıklama (EN)", max_length=200, blank=True)
+    icon = models.CharField("Lucide ikon adı", max_length=50, default="Briefcase")
+    order = models.PositiveSmallIntegerField("Sıra", default=0)
+
+    class Meta:
+        ordering = ["order", "name_az"]
         verbose_name = "Meslek"
         verbose_name_plural = "Meslekler"
 
     def __str__(self):
-        return self.name
+        return self.name_az
+
+
+class ProgramGroup(models.Model):
+    """Program listesinde başlık: 'Foto və qrafika', 'Video və animasiya'..."""
+
+    name_az = models.CharField("Ad (AZ)", max_length=100)
+    name_ru = models.CharField("Ad (RU)", max_length=100, blank=True)
+    name_en = models.CharField("Ad (EN)", max_length=100, blank=True)
+    order = models.PositiveSmallIntegerField("Sıra", default=0)
+
+    class Meta:
+        ordering = ["order", "name_az"]
+        verbose_name = "Program grubu"
+        verbose_name_plural = "Program grupları"
+
+    def __str__(self):
+        return self.name_az
 
 
 class Program(models.Model):
     name = models.CharField("Program", max_length=100, unique=True)
     icon = models.CharField("Lucide ikon adı", max_length=50, default="AppWindow")
+    group = models.ForeignKey(
+        ProgramGroup, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="programs", verbose_name="Grup",
+    )
+    blurb_az = models.CharField("Kısa açıklama (AZ)", max_length=120, blank=True)
+    blurb_ru = models.CharField("Kısa açıklama (RU)", max_length=120, blank=True)
+    blurb_en = models.CharField("Kısa açıklama (EN)", max_length=120, blank=True)
     professions = models.ManyToManyField(Profession, related_name="programs", verbose_name="Meslekler")
 
     # CPU/GPU skorları: PassMark CPU Mark ve 3DMark Time Spy ölçeğine yakın değerler.
@@ -38,7 +95,7 @@ class Program(models.Model):
     rec_ssd_gb = models.PositiveIntegerField("Önerilen SSD (GB)", default=512)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["group__order", "name"]
         verbose_name = "Program"
         verbose_name_plural = "Programlar"
 

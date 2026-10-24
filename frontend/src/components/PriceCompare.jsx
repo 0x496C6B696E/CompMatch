@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { azn, usd } from "../api.js";
+import { useLang } from "../i18n/index.jsx";
 
 const thresholdAzn = (settings) => Number(settings.duty_free_limit_usd) * Number(settings.usd_azn_rate);
 
@@ -23,21 +24,18 @@ function CostBar({ total, max, segments, dim, threshold }) {
         ))}
       </div>
       {threshold != null && threshold < max && (
-        <span
-          aria-hidden="true"
-          className="absolute -inset-y-1 w-0 border-l border-dashed border-white/40"
-          style={{ left: `${(threshold / max) * 100}%` }}
-        />
+        <span aria-hidden="true" className="absolute -inset-y-1 w-0 border-l border-dashed border-white/40" style={{ left: `${(threshold / max) * 100}%` }} />
       )}
     </div>
   );
 }
 
 function Badge({ savings }) {
+  const { t } = useLang();
   const saved = savings != null && Number(savings) > 0;
   return (
     <span className="animate-badge-glow absolute -top-3 left-4 rounded-full bg-green-p px-3 py-1 text-xs font-semibold text-space">
-      En Karlı Seçenek{saved ? ` (${azn(savings)} Tasarruf)` : ""}
+      {saved ? t("price.badge.savings", { amount: azn(savings) }) : t("price.badge")}
     </span>
   );
 }
@@ -53,11 +51,12 @@ function Panel({ title, best, savings, children }) {
 }
 
 function Row({ store, url, inStock, amount, children }) {
+  const { t } = useLang();
   return (
     <div className="flex items-center gap-3">
       <span className="flex w-24 shrink-0 flex-col sm:w-28">
         <StoreName store={store} url={url} />
-        {!inStock && <span className="text-xs text-mist">stok yok</span>}
+        {!inStock && <span className="text-xs text-mist">{t("price.outOfStock")}</span>}
       </span>
       {children}
       <span className={`num w-20 shrink-0 text-right font-display text-base font-semibold ${inStock ? "text-snow" : "text-mist"}`}>
@@ -67,30 +66,36 @@ function Row({ store, url, inStock, amount, children }) {
   );
 }
 
-/** Çubukların nasıl okunacağı: sayfada bir kez gösterilir. */
+/** Çubukların nasıl okunacağı: sayfada bir kez, açılır-kapanır. */
 export function CostLegend({ settings }) {
+  const { t } = useLang();
   if (!settings) return null;
-  const ratePct = Math.round(Number(settings.duty_rate) * 100);
   return (
-    <div className="space-y-1.5 text-xs text-mist">
-      <p className="flex flex-wrap gap-x-4 gap-y-1">
-        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-3 rounded-sm bg-cyan-p" /> Bakü fiyatı</span>
-        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-3 rounded-sm bg-purple-p" /> ürün</span>
-        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-3 rounded-sm bg-purple-p/50" /> kargo</span>
-        <span className="inline-flex items-center gap-1.5"><i className="seg-duty inline-block h-2 w-3 rounded-sm" /> gümrük</span>
-        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-3 w-px border-l border-dashed border-white/40" /> {azn(thresholdAzn(settings))} gümrüksüz sınır</span>
+    <details className="glass rounded-2xl px-5 py-3 text-xs text-mist">
+      <summary className="cursor-pointer select-none text-sm font-medium text-snow">{t("legend.title")}</summary>
+      <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-3 rounded-sm bg-cyan-p" /> {t("legend.local")}</span>
+        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-3 rounded-sm bg-purple-p" /> {t("legend.item")}</span>
+        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-3 rounded-sm bg-purple-p/50" /> {t("legend.ship")}</span>
+        <span className="inline-flex items-center gap-1.5"><i className="seg-duty inline-block h-2 w-3 rounded-sm" /> {t("legend.duty")}</span>
+        <span className="inline-flex items-center gap-1.5"><i className="inline-block h-3 w-px border-l border-dashed border-white/40" /> {t("legend.threshold", { amount: azn(thresholdAzn(settings)) })}</span>
       </p>
-      <p className="num max-w-[70ch]">
-        Baz = fiyat + ağırlık × {usd(settings.shipping_per_kg_usd)}/kg. Baz {usd(settings.duty_free_limit_usd)} üstüyse gümrük
-        %{ratePct} + {usd(settings.declaration_fee_usd)} beyanname. Kur {Number(settings.usd_azn_rate).toLocaleString("tr-TR")} ₼/$.
-        Her üründe iki panel aynı ölçeği paylaşır.
+      <p className="num mt-2 max-w-[70ch]">
+        {t("legend.formula", {
+          perkg: usd(settings.shipping_per_kg_usd),
+          limit: usd(settings.duty_free_limit_usd),
+          rate: Math.round(Number(settings.duty_rate) * 100),
+          fee: usd(settings.declaration_fee_usd),
+          fx: Number(settings.usd_azn_rate).toLocaleString("tr-TR"),
+        })}
       </p>
-    </div>
+    </details>
   );
 }
 
 /** Bakü yerel mağazalar vs Global + Azerbaycan gümrük, yan yana Bento kartlar, ortak ₼ ölçeği. */
 export default function PriceCompare({ prices, settings }) {
+  const { t } = useLang();
   if (!prices) return null;
   const { local, global: glob, best } = prices;
   const max = Math.max(1, ...local.map((o) => Number(o.price_azn)), ...glob.map((o) => Number(o.total_azn)));
@@ -98,9 +103,9 @@ export default function PriceCompare({ prices, settings }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Panel title="Bakü'de" best={best?.side === "local"} savings={best?.savings_azn}>
+      <Panel title={t("price.local")} best={best?.side === "local"} savings={best?.savings_azn}>
         {local.length === 0 ? (
-          <p className="mt-3 text-sm text-mist">Bu ürün için Bakü fiyatı girilmemiş. Admin panelinden ekleyebilirsin.</p>
+          <p className="mt-3 text-sm text-mist">{t("price.noLocal")}</p>
         ) : (
           <ul className="mt-4 space-y-3 text-sm">
             {local.map((o) => (
@@ -114,9 +119,9 @@ export default function PriceCompare({ prices, settings }) {
         )}
       </Panel>
 
-      <Panel title="Global'den getirilirse" best={best?.side === "global"} savings={best?.savings_azn}>
+      <Panel title={t("price.global")} best={best?.side === "global"} savings={best?.savings_azn}>
         {glob.length === 0 ? (
-          <p className="mt-3 text-sm text-mist">Bu ürün için global fiyat girilmemiş. Admin panelinden ekleyebilirsin.</p>
+          <p className="mt-3 text-sm text-mist">{t("price.noGlobal")}</p>
         ) : (
           <ul className="mt-4 space-y-3 text-sm">
             {glob.map((o) => (
@@ -135,8 +140,9 @@ export default function PriceCompare({ prices, settings }) {
                   />
                 </Row>
                 <p className="num ml-27 mt-1 text-xs text-mist sm:ml-31">
-                  {usd(o.price_usd)} ürün, {usd(o.shipping_usd)} kargo
-                  {Number(o.duty_usd) > 0 ? `, ${usd(o.duty_usd)} gümrük` : ", gümrüksüz"}
+                  {Number(o.duty_usd) > 0
+                    ? t("price.breakdown", { price: usd(o.price_usd), ship: usd(o.shipping_usd), duty: usd(o.duty_usd) })
+                    : t("price.breakdown.free", { price: usd(o.price_usd), ship: usd(o.shipping_usd) })}
                 </p>
               </li>
             ))}

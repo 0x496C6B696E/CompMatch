@@ -7,7 +7,9 @@ from .models import (
     Laptop,
     LaptopPrice,
     Profession,
+    ProfessionCategory,
     Program,
+    ProgramGroup,
     Store,
 )
 
@@ -15,12 +17,42 @@ admin.site.site_header = "CompMatch Yönetim Paneli"
 admin.site.site_title = "CompMatch"
 admin.site.index_title = "Donanım, mağaza ve gümrük yönetimi"
 
+NAMES = ("name_az", "name_ru", "name_en")
+
+
+@admin.register(ProfessionCategory)
+class ProfessionCategoryAdmin(admin.ModelAdmin):
+    list_display = (*NAMES, "icon", "order", "profession_count")
+    list_editable = ("order",)
+    search_fields = NAMES
+
+    @admin.display(description="Meslek sayısı")
+    def profession_count(self, obj):
+        return obj.professions.count()
+
 
 @admin.register(Profession)
 class ProfessionAdmin(admin.ModelAdmin):
-    list_display = ("name", "icon", "order", "program_count")
+    list_display = (*NAMES, "category", "icon", "order", "program_count")
     list_editable = ("order",)
-    search_fields = ("name",)
+    list_filter = ("category",)
+    search_fields = NAMES
+    fieldsets = (
+        (None, {"fields": ("category", "icon", "order")}),
+        ("Ad", {"fields": NAMES}),
+        ("Açıklama", {"fields": ("description_az", "description_ru", "description_en")}),
+    )
+
+    @admin.display(description="Program sayısı")
+    def program_count(self, obj):
+        return obj.programs.count()
+
+
+@admin.register(ProgramGroup)
+class ProgramGroupAdmin(admin.ModelAdmin):
+    list_display = (*NAMES, "order", "program_count")
+    list_editable = ("order",)
+    search_fields = NAMES
 
     @admin.display(description="Program sayısı")
     def program_count(self, obj):
@@ -30,14 +62,15 @@ class ProfessionAdmin(admin.ModelAdmin):
 @admin.register(Program)
 class ProgramAdmin(admin.ModelAdmin):
     list_display = (
-        "name", "min_cpu_score", "rec_cpu_score", "min_gpu_score", "rec_gpu_score",
+        "name", "group", "min_cpu_score", "rec_cpu_score", "min_gpu_score", "rec_gpu_score",
         "min_ram_gb", "rec_ram_gb", "min_ssd_gb", "rec_ssd_gb",
     )
-    list_filter = ("professions",)
+    list_filter = ("group", "professions")
     search_fields = ("name",)
     filter_horizontal = ("professions",)
     fieldsets = (
-        (None, {"fields": ("name", "icon", "professions")}),
+        (None, {"fields": ("name", "icon", "group", "professions")}),
+        ("Kısa açıklama (sade dil)", {"fields": ("blurb_az", "blurb_ru", "blurb_en")}),
         ("Minimum gereksinimler", {"fields": ("min_cpu_score", "min_gpu_score", "min_ram_gb", "min_ssd_gb")}),
         ("Önerilen gereksinimler", {"fields": ("rec_cpu_score", "rec_gpu_score", "rec_ram_gb", "rec_ssd_gb")}),
     )

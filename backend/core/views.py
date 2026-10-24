@@ -4,9 +4,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import services
-from .models import CustomsSettings, Profession, Program
+from .models import DEFAULT_LANG, LANGS, Component, CustomsSettings, Laptop, Profession, Program
 from .serializers import (
+    ComponentCatalogSerializer,
     CustomsSettingsSerializer,
+    LaptopCatalogSerializer,
     MatchRequestSerializer,
     ProfessionSerializer,
     ProgramSerializer,
@@ -14,23 +16,60 @@ from .serializers import (
 )
 
 
-class ProfessionViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Profession.objects.all()
+def get_lang(request):
+    """?lang=az|ru|en, yoksa Accept-Language'ın ilk iki harfi, yoksa az."""
+    lang = request.query_params.get("lang") or request.headers.get("Accept-Language", "")[:2].lower()
+    return lang if lang in LANGS else DEFAULT_LANG
+
+
+class LangViewSet(viewsets.ReadOnlyModelViewSet):
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), "lang": get_lang(self.request)}
+
+
+class ProfessionViewSet(LangViewSet):
+    queryset = Profession.objects.select_related("category")
     serializer_class = ProfessionSerializer
 
 
-class ProgramViewSet(viewsets.ReadOnlyModelViewSet):
+class ProgramViewSet(LangViewSet):
     """GET /api/programs/?profession=<id> ile mesleğe göre filtre."""
     serializer_class = ProgramSerializer
 
     def get_queryset(self):
-        qs = Program.objects.prefetch_related("professions")
+        qs = Program.objects.select_related("group").prefetch_related("professions")
         profession = self.request.query_params.get("profession")
         if not profession:
             return qs
         if not profession.isdigit():
             raise ValidationError({"profession": "Geçersiz meslek id."})
         return qs.filter(professions__id=int(profession))
+
+
+class CatalogViewSet(LangViewSet):
+    """Fiyat karşılaştırması ve 'uygun meslekler' ile liste/detay. Küçük katalog: hepsi tek seferde."""
+
+    def get_serializer_context(self):
+        return {
+            **super().get_serializer_context(),
+            "settings": CustomsSettings.load(),
+            "prof_reqs": services.profession_requirements(),
+        }
+
+
+class LaptopViewSet(CatalogViewSet):
+    queryset = Laptop.objects.prefetch_related("prices__store")
+    serializer_class = LaptopCatalogSerializer
+
+
+class ComponentViewSet(CatalogViewSet):
+    """GET /api/components/?category=cpu"""
+    serializer_class = ComponentCatalogSerializer
+
+    def get_queryset(self):
+        qs = Component.objects.prefetch_related("prices__store")
+        category = self.request.query_params.get("category")
+        return qs.filter(category=category) if category else qs
 
 
 class MatchView(APIView):

@@ -2,8 +2,17 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from .models import Component, ComponentPrice, CustomsSettings, Laptop, LaptopPrice, Program, Store
-from .services import aggregate_requirements, build_pc, compare_prices, landed_cost, pick_laptops
+from .models import Component, ComponentPrice, CustomsSettings, Laptop, LaptopPrice, Profession, Program, Store, tr
+from .services import (
+    aggregate_requirements,
+    build_pc,
+    compare_prices,
+    component_fits,
+    landed_cost,
+    laptop_fits,
+    pick_laptops,
+    profession_requirements,
+)
 
 
 class ServicesTest(TestCase):
@@ -55,7 +64,7 @@ class ServicesTest(TestCase):
     def test_build_pc_is_compatible(self):
         def mk(cat, name, **kw):
             c = Component.objects.create(category=cat, name=name, brand="B", weight_kg=Decimal("1"), **kw)
-            ComponentPrice.objects.create(component=c, store=self.local, price=kw.pop("_p", 100), currency="AZN")
+            ComponentPrice.objects.create(component=c, store=self.local, price=100, currency="AZN")
             return c
 
         mk(Component.CPU, "cpu-am5", score=100, socket="AM5", tdp_watts=105)
@@ -70,7 +79,23 @@ class ServicesTest(TestCase):
 
         req = {"min": {"cpu_score": 50, "gpu_score": 50, "ram_gb": 16, "ssd_gb": 512},
                "rec": {"cpu_score": 100, "gpu_score": 100, "ram_gb": 32, "ssd_gb": 1000}}
-        parts = {p["category"]: p["component"].name for p in build_pc(req, self.s)}
-        self.assertEqual(parts["motherboard"], "mb-am5")
-        self.assertEqual(parts["ram"], "ddr5")
-        self.assertEqual(parts["case_psu"], "ok")  # 105 + 200 + 150 = 455 W > 400
+        parts = {p["category"]: p for p in build_pc(req, self.s)}
+        self.assertEqual(parts["motherboard"]["component"].name, "mb-am5")
+        self.assertEqual(parts["motherboard"]["compat"], {"socket": "AM5"})
+        self.assertEqual(parts["ram"]["component"].name, "ddr5")
+        self.assertEqual(parts["case_psu"]["component"].name, "ok")  # 105 + 200 + 150 = 455 W > 400
+        self.assertEqual(parts["case_psu"]["compat"], {"psu_min_w": 455})
+
+    def test_fits_and_translation(self):
+        prof = Profession.objects.create(name_az="Montajçı", name_en="Editor")
+        prog = Program.objects.create(name="P", min_cpu_score=50, rec_cpu_score=100, min_gpu_score=50, rec_gpu_score=100,
+                                      min_ram_gb=8, rec_ram_gb=16, min_ssd_gb=256, rec_ssd_gb=512)
+        prog.professions.add(prof)
+        reqs = profession_requirements()
+        lp = Laptop.objects.create(name="L", brand="X", cpu="c", gpu="g", ram_gb=16, ssd_gb=512,
+                                   cpu_score=60, gpu_score=100, weight_kg=Decimal("1"))
+        self.assertEqual(laptop_fits(lp, reqs), [(prof, "min")])
+        cpu = Component.objects.create(category=Component.CPU, name="c", brand="B", score=100, weight_kg=Decimal("1"))
+        self.assertEqual(component_fits(cpu, reqs), [(prof, "rec")])
+        self.assertEqual(tr(prof, "name", "en"), "Editor")
+        self.assertEqual(tr(prof, "name", "ru"), "Montajçı")  # boş -> AZ'ye düşer

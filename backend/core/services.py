@@ -4,10 +4,11 @@ CompMatch iş mantığı:
   - landed_cost / compare_prices: Bakü yerel vs global + Azerbaycan gümrük hesabı
   - pick_laptops: 3 laptop (fiyat/perf, önerilen, pro)
   - build_pc: birbiriyle uyumlu PC bileşen seti
+  - profession_requirements / laptop_fits / component_fits: katalogda "hangi işler için uygun"
 """
 from decimal import ROUND_HALF_UP, Decimal
 
-from .models import REQ_FIELDS, Component, CustomsSettings, Laptop, Store
+from .models import REQ_FIELDS, Component, CustomsSettings, Laptop, Profession, Store
 
 TWO = Decimal("0.01")
 PSU_HEADROOM_W = 150  # anakart + RAM + SSD + fanlar için pay
@@ -31,6 +32,61 @@ def aggregate_requirements(programs):
 
 def meets(obj, level):
     return all(getattr(obj, f) >= level[f] for f in REQ_FIELDS)
+
+
+def profession_requirements():
+    """{profession: req} — programı olan her meslek için, katalog 'uygun işler' etiketi için."""
+    out = {}
+    for prof in Profession.objects.prefetch_related("programs").order_by("order", "name_az"):
+        programs = list(prof.programs.all())
+        if programs:
+            out[prof] = aggregate_requirements(programs)
+    return out
+
+
+def _level(value_of, req):
+    if all(value_of(f) >= req["rec"][f] for f in REQ_FIELDS):
+        return "rec"
+    if all(value_of(f) >= req["min"][f] for f in REQ_FIELDS):
+        return "min"
+    return None
+
+
+def laptop_fits(laptop, prof_reqs):
+    """[(profession, 'rec'|'min')] — laptop'un karşıladığı meslekler, rec önce."""
+    found = []
+    for prof, req in prof_reqs.items():
+        level = _level(lambda f: getattr(laptop, f), req)
+        if level:
+            found.append((prof, level))
+    found.sort(key=lambda x: x[1] != "rec")
+    return found
+
+
+# Bileşen kategorisi -> hangi gereksinim alanıyla ve hangi özelliğiyle karşılaştırılır.
+COMPONENT_FIELD = {
+    Component.CPU: ("cpu_score", "score"),
+    Component.GPU: ("gpu_score", "score"),
+    Component.RAM: ("ram_gb", "capacity_gb"),
+    Component.SSD: ("ssd_gb", "capacity_gb"),
+}
+
+
+def component_fits(component, prof_reqs):
+    """Tek alanlı karşılaştırma: CPU skoru, GPU skoru, RAM veya SSD kapasitesi."""
+    pair = COMPONENT_FIELD.get(component.category)
+    if not pair:
+        return []
+    req_field, attr = pair
+    value = getattr(component, attr)
+    found = []
+    for prof, req in prof_reqs.items():
+        if value >= req["rec"][req_field]:
+            found.append((prof, "rec"))
+        elif value >= req["min"][req_field]:
+            found.append((prof, "min"))
+    found.sort(key=lambda x: x[1] != "rec")
+    return found
 
 
 # --------------------------------------------------------------------------- #
@@ -122,20 +178,17 @@ def pick_laptops(req, settings):
 
     picks, used = [], set()
 
-    def take(tier, label, candidates):
+    def take(tier, candidates):
         """Aday listesinde (öncelik sırasıyla) henüz seçilmemiş ilk laptopu al."""
         for c in candidates:
             if c.pk not in used:
                 used.add(c.pk)
-                picks.append({
-                    "tier": tier, "label": label, "laptop": c,
-                    "meets": "rec" if meets(c, req["rec"]) else "min",
-                })
+                picks.append({"tier": tier, "laptop": c, "meets": "rec" if meets(c, req["rec"]) else "min"})
                 return
 
-    take("value", "Fiyat / Performans", by_cost(min_ok))
-    take("recommended", "Tam Uyumlu / Önerilen", by_cost(rec_ok) + by_cost(min_ok))
-    take("pro", "Üst Segment / Pro", by_perf(rec_ok) + by_perf(min_ok))
+    take("value", by_cost(min_ok))
+    take("recommended", by_cost(rec_ok) + by_cost(min_ok))
+    take("pro", by_perf(rec_ok) + by_perf(min_ok))
     return picks
 
 
@@ -184,17 +237,17 @@ def build_pc(req, settings):
     need_w = (cpu.tdp_watts if cpu else 0) + (gpu.tdp_watts if gpu else 0) + PSU_HEADROOM_W
     case = _cheapest(by_cat[Component.CASE_PSU], lambda k: k.psu_watts >= need_w)
 
+    # compat: frontend'in kendi dilinde yazacağı yapısal not
     parts = [
         (Component.CPU, cpu, cpu_level, None),
         (Component.GPU, gpu, gpu_level, None),
-        (Component.MOTHERBOARD, mb, "rec" if mb else "below", f"Soket {cpu.socket}" if cpu else None),
-        (Component.RAM, ram, ram_level, ram_type or None),
+        (Component.MOTHERBOARD, mb, "rec" if mb else "below", {"socket": cpu.socket} if cpu else None),
+        (Component.RAM, ram, ram_level, {"ram_type": ram_type} if ram_type else None),
         (Component.SSD, ssd, ssd_level, None),
-        (Component.CASE_PSU, case, "rec" if case else "below", f"≥ {need_w} W PSU"),
+        (Component.CASE_PSU, case, "rec" if case else "below", {"psu_min_w": need_w}),
     ]
-    labels = dict(Component.CATEGORIES)
     return [
-        {"category": cat, "label": labels[cat], "component": comp, "meets": level, "compat_note": note}
+        {"category": cat, "component": comp, "meets": level, "compat": note}
         for cat, comp, level, note in parts
     ]
 
