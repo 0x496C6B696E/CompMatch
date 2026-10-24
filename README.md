@@ -10,7 +10,7 @@ Meslek → program → cihaz tipi seçimine göre **darboğazsız sistem gereksi
 
 ## Klasör Yapısı
 
-```
+```text
 CompMatch/
 ├── backend/
 │   ├── manage.py
@@ -57,10 +57,16 @@ CompMatch/
 
 > Gereksinimler: [uv](https://docs.astral.sh/uv/) (Python'u kendisi indirir) ve Node.js 20+.
 
-### 1) Backend — `localhost:8000`
+### Tek port (önerilen) — her şey `localhost:8000`
+
+Frontend build edilir, Django hem API'yi hem React uygulamasını aynı porttan servis eder.
 
 ```powershell
-cd backend
+cd frontend
+npm install
+npm run build                             # frontend/dist -> Django /static/ ve index.html
+
+cd ../backend
 uv sync                                   # .venv oluşturur, Django + DRF + CORS kurar
 uv run python manage.py migrate
 uv run python manage.py seed_data         # örnek veriler (tekrar çalıştırmak güvenlidir)
@@ -68,17 +74,19 @@ uv run python manage.py createsuperuser   # admin paneli için kullanıcı
 uv run python manage.py runserver
 ```
 
+- Uygulama: <http://localhost:8000/>
 - Admin: <http://localhost:8000/admin/>
 - API (gezilebilir): <http://localhost:8000/api/>
 
-### 2) Frontend — `localhost:5173`
+Frontend'de değişiklik yaptıysan tekrar `npm run build` çalıştır.
 
-Yeni bir terminalde:
+### Geliştirme modu (hot reload) — `localhost:5173`
+
+Backend yukarıdaki gibi 8000'de çalışırken ikinci terminalde:
 
 ```powershell
 cd frontend
-npm install
-npm run dev
+npm run dev                               # /api istekleri 8000'e proxy'lenir
 ```
 
 Tarayıcıda <http://localhost:5173> adresini aç.
@@ -95,7 +103,7 @@ uv run python manage.py test
 ## API
 
 | Uç | Açıklama |
-|----|----------|
+| --- | --- |
 | `GET /api/professions/` | Meslek listesi |
 | `GET /api/programs/?profession=<id>` | Mesleğe göre programlar (min/önerilen skorlarla) |
 | `POST /api/match/` | `{"program_ids": [1,4], "device_type": "laptop" \| "pc"}` → gereksinimler + öneriler + fiyat/gümrük karşılaştırması |
@@ -103,7 +111,7 @@ uv run python manage.py test
 
 ## Azerbaycan Gümrük Formülü
 
-```
+```text
 Baz Maliyet (USD)   = Ürün Fiyatı + Ağırlık (kg) × KG Kargo Ücreti
 Gümrük (USD)        = Baz > Limit ? (Baz − Limit) × Oran + Sabit Beyanname : 0
 Bakü Teslim (AZN)   = (Baz + Gümrük) × USD/AZN Kuru

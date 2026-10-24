@@ -1,6 +1,7 @@
 import axios from "axios";
 
-export const api = axios.create({ baseURL: "http://localhost:8000/api" });
+// Aynı origin: Django (8000) build edilmiş frontend'i servis eder; Vite dev'de (5173) proxy devreye girer.
+export const api = axios.create({ baseURL: "/api" });
 
 export const getProfessions = () => api.get("/professions/").then((r) => r.data);
 export const getPrograms = (professionId) =>

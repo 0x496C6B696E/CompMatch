@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"  # `npm run build` çıktısı
 
 # Bu uygulama yalnızca localhost'ta çalışır; varsayılanlar sıfır-konfigürasyon geliştirme içindir.
 # Dışarıya açılacaksa DJANGO_SECRET_KEY ve DJANGO_DEBUG=0 ortam değişkenleriyle ezin.
@@ -42,7 +43,7 @@ ROOT_URLCONF = "compmatch.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [FRONTEND_DIST],  # index.html
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -76,6 +77,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [FRONTEND_DIST]  # /static/assets/*.js|css (Vite base=/static/)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
