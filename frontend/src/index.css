@@ -1,32 +1,73 @@
 @import "tailwindcss";
 
-/* Ponytale tasarım dili: derin uzay karanlığı + neon vurgular */
+/* Ponytale tasarım dili: derin uzay karanlığı, cam katmanlar, neon vurgular */
 @theme {
   --color-space: #090a0f;
   --color-surface: #12141d;
+  --color-snow: #eef0f6;
+  --color-mist: #8b90a5;
   --color-indigo-p: #6366f1;
   --color-purple-p: #a855f7;
   --color-cyan-p: #06b6d4;
   --color-green-p: #10b981;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-glow: glow 2.4s ease-in-out infinite;
 
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(14px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes glow {
-    0%, 100% { box-shadow: 0 0 18px rgba(16, 185, 129, 0.35); }
-    50% { box-shadow: 0 0 32px rgba(16, 185, 129, 0.7); }
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+
+  --animate-badge-glow: badge-glow 3s ease-in-out infinite;
+
+  @keyframes badge-glow {
+    0%, 100% { box-shadow: 0 0 16px rgba(16, 185, 129, 0.35); }
+    50% { box-shadow: 0 0 28px rgba(16, 185, 129, 0.65); }
   }
 }
 
 html { color-scheme: dark; }
+
 body {
-  @apply bg-space text-slate-200 antialiased;
+  @apply font-sans text-snow antialiased;
   min-height: 100vh;
+  background-color: var(--color-space);
+  /* Tek yumuşak indigo ışık; cam katmanların bulanıklaştıracağı bir şey olsun diye */
+  background-image: radial-gradient(ellipse 70% 45% at 12% -8%, rgba(99, 102, 241, 0.16), transparent 65%);
+  background-attachment: fixed;
 }
 
-/* Tüm cam katmanlar aynı yüzeyi paylaşır */
+:focus-visible {
+  outline: 2px solid var(--color-indigo-p);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Cam katman: brief'teki tanım */
 .glass { @apply backdrop-blur-xl bg-white/[0.03] border border-white/[0.08]; }
+
+/* Rakamlar hizalı */
+.num { font-variant-numeric: tabular-nums; }
+
+/* Adım değişiminde tek panel geçişi */
+.panel { animation: panel-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Çubuklar sonuç geldiğinde bir kez dolar */
+.bar-grow { transform-origin: left; animation: bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Gümrük parçası: çizgili, "farklı türde maliyet" */
+.seg-duty {
+  background: repeating-linear-gradient(135deg, #a855f7 0 3px, rgba(168, 85, 247, 0.35) 3px 7px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

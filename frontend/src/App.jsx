@@ -1,16 +1,45 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, Laptop, Monitor, RotateCcw, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { getProfessions, getPrograms, postMatch } from "./api.js";
 import Stepper from "./components/Stepper.jsx";
 import SelectCard from "./components/SelectCard.jsx";
-import RequirementsCard from "./components/RequirementsCard.jsx";
+import RequirementBars, { FIELDS } from "./components/RequirementBars.jsx";
 import LaptopResults from "./components/LaptopResults.jsx";
 import PcResults from "./components/PcResults.jsx";
+import { CostLegend } from "./components/PriceCompare.jsx";
 
 const btnPrimary =
-  "inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-p to-purple-p px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(168,85,247,0.45)] disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none";
+  "inline-flex items-center gap-2 rounded-xl bg-indigo-p px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_18px_rgba(99,102,241,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(99,102,241,0.55)] disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0";
 const btnGhost =
-  "inline-flex items-center gap-2 rounded-xl glass px-4 py-2.5 text-sm font-medium text-slate-300 transition-all duration-300 hover:bg-white/[0.06] hover:text-white";
+  "inline-flex items-center gap-2 whitespace-nowrap rounded-xl glass px-4 py-2.5 text-sm font-medium text-mist transition-colors duration-300 hover:bg-white/[0.06] hover:text-snow";
+
+function Heading({ title, hint }) {
+  return (
+    <div className="mb-7">
+      <h2 className="font-display text-3xl font-semibold leading-[1.05] tracking-[-0.01em] text-snow sm:text-[2.6rem]">{title}</h2>
+      {hint && <p className="mt-2 max-w-[60ch] text-base text-mist">{hint}</p>}
+    </div>
+  );
+}
+
+/** Program kartındaki küçük "parmak izi": programın önerilen değerleri katalog maksimumuna oranla. */
+function Fingerprint({ program, programs }) {
+  return (
+    <div className="mt-4 grid w-full grid-cols-4 gap-1.5" aria-hidden="true">
+      {FIELDS.map((f) => {
+        const max = Math.max(1, ...programs.map((p) => p[`rec_${f.key}`]));
+        return (
+          <div key={f.key} title={`${f.label}: ${f.fmt(program[`rec_${f.key}`])}`}>
+            <div className="h-1 rounded-full bg-white/[0.07]">
+              <div className="h-full rounded-full bg-purple-p/70" style={{ width: `${(program[`rec_${f.key}`] / max) * 100}%` }} />
+            </div>
+            <div className="mt-1 text-[11px] text-mist">{f.label.replace(" skoru", "")}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function App() {
   const [step, setStep] = useState(0);
@@ -26,7 +55,7 @@ export default function App() {
   useEffect(() => {
     getProfessions()
       .then(setProfessions)
-      .catch(() => setError("Backend'e ulaşılamadı. Django sunucusu localhost:8000 üzerinde çalışıyor mu?"));
+      .catch(() => setError("Sunucuya bağlanamadık. Django'nun 8000 portunda çalıştığını kontrol et."));
   }, []);
 
   useEffect(() => {
@@ -35,6 +64,8 @@ export default function App() {
     setSelected(new Set());
     getPrograms(profession.id).then(setPrograms).catch(() => setError("Programlar yüklenemedi."));
   }, [profession]);
+
+  const selectedPrograms = useMemo(() => programs.filter((p) => selected.has(p.id)), [programs, selected]);
 
   const toggleProgram = (id) =>
     setSelected((prev) => {
@@ -50,7 +81,7 @@ export default function App() {
       setResult(await postMatch([...selected], deviceType));
       setStep(3);
     } catch (e) {
-      setError(e.response?.data?.detail ?? "Eşleştirme sırasında hata oluştu.");
+      setError(e.response?.data?.detail ?? "Eşleştirme yapılamadı. Tekrar dene.");
     } finally {
       setLoading(false);
     }
@@ -68,161 +99,152 @@ export default function App() {
   const canNext = [Boolean(profession), selected.size > 0, Boolean(deviceType)][step];
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      {/* Uzay atmosferi: iki yumuşak neon leke */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute -top-40 -left-32 h-[32rem] w-[32rem] rounded-full bg-indigo-p/20 blur-[140px]" />
-        <div className="absolute top-1/3 -right-40 h-[28rem] w-[28rem] rounded-full bg-purple-p/15 blur-[140px]" />
-        <div className="absolute bottom-0 left-1/3 h-[20rem] w-[20rem] rounded-full bg-cyan-p/10 blur-[120px]" />
-      </div>
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <header className="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold leading-none tracking-[-0.02em] text-snow">CompMatch</h1>
+          <p className="mt-1.5 text-sm text-mist">Mesleğine göre donanım, Bakü'ye göre fiyat.</p>
+        </div>
+        {step > 0 && (
+          <button type="button" onClick={reset} className={btnGhost}>
+            <RotateCcw size={16} /> Baştan başla
+          </button>
+        )}
+      </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-p to-purple-p text-white shadow-[0_0_24px_rgba(99,102,241,0.45)]">
-              <Sparkles size={22} />
-            </span>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">CompMatch</h1>
-              <p className="text-xs text-slate-400">Donanım eşleştirme · Bakü vs Global maliyet</p>
+      <Stepper current={step} />
+
+      {error && (
+        <div role="alert" className="mt-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
+          {error}
+        </div>
+      )}
+
+      {/* key=step: adım değişiminde tek panel geçişi */}
+      <section key={step} className="panel mt-10">
+        {step === 0 && (
+          <>
+            <Heading title="Ne iş yapıyorsun?" hint="Mesleğini seç, kullandığın programları ona göre listeleyelim." />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+              {professions.map((p, i) => (
+                <SelectCard
+                  key={p.id}
+                  icon={p.icon}
+                  title={p.name}
+                  subtitle={p.description}
+                  selected={profession?.id === p.id}
+                  onClick={() => setProfession(p)}
+                  className={i < 3 ? "lg:col-span-2" : "lg:col-span-3"}
+                />
+              ))}
             </div>
-          </div>
-          {step > 0 && (
-            <button type="button" onClick={reset} className={btnGhost}>
-              <RotateCcw size={16} /> Baştan başla
-            </button>
-          )}
-        </header>
-
-        <Stepper current={step} />
-
-        {error && (
-          <div className="mt-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
-            {error}
-          </div>
+          </>
         )}
 
-        <section className="mt-8">
-          {step === 0 && (
-            <div className="animate-rise">
-              <h2 className="mb-1 text-2xl font-semibold text-white">Ne iş yapıyorsun?</h2>
-              <p className="mb-6 text-slate-400">Mesleğini seç; kullandığın programları ona göre listeleyelim.</p>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {professions.map((p) => (
-                  <SelectCard
-                    key={p.id}
-                    icon={p.icon}
-                    title={p.name}
-                    subtitle={p.description}
-                    selected={profession?.id === p.id}
-                    onClick={() => setProfession(p)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="animate-rise">
-              <h2 className="mb-1 text-2xl font-semibold text-white">Hangi programları kullanıyorsun?</h2>
-              <p className="mb-6 text-slate-400">
-                Birden fazla seçebilirsin. Gereksinimler, seçtiklerinin en yükseği baz alınarak hesaplanır.
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {step === 1 && (
+          <>
+            <Heading
+              title="Hangi programları kullanıyorsun?"
+              hint="Birden fazla seçebilirsin. Her bileşen için seçtiklerinin en yükseği alınır, böylece hiçbiri darboğaz yaratmaz."
+            />
+            <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+              <div className="grid content-start gap-4 sm:grid-cols-2">
+                {programs.length === 0 && (
+                  <p className="text-mist sm:col-span-2">Bu meslek için henüz program eklenmedi. Admin panelinden ekleyebilirsin.</p>
+                )}
                 {programs.map((p) => (
-                  <SelectCard
-                    key={p.id}
-                    icon={p.icon}
-                    title={p.name}
-                    accent="purple"
-                    selected={selected.has(p.id)}
-                    onClick={() => toggleProgram(p.id)}
-                  >
-                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-slate-500">
-                      <span className="rounded-md bg-white/[0.04] px-1.5 py-0.5">Önerilen RAM {p.rec_ram_gb} GB</span>
-                      <span className="rounded-md bg-white/[0.04] px-1.5 py-0.5">GPU {p.rec_gpu_score.toLocaleString("tr-TR")}</span>
-                    </div>
+                  <SelectCard key={p.id} icon={p.icon} title={p.name} tone="purple" selected={selected.has(p.id)} onClick={() => toggleProgram(p.id)}>
+                    <Fingerprint program={p} programs={programs} />
                   </SelectCard>
                 ))}
               </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="animate-rise">
-              <h2 className="mb-1 text-2xl font-semibold text-white">Laptop mu, masaüstü PC mi?</h2>
-              <p className="mb-6 text-slate-400">Laptop için 3 öneri, PC için birbiriyle uyumlu parça listesi hazırlarız.</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <SelectCard
-                  icon="Laptop"
-                  accent="cyan"
-                  title="Laptop"
-                  subtitle="Taşınabilir. Fiyat/Performans, Önerilen ve Pro olmak üzere 3 seçenek."
-                  selected={deviceType === "laptop"}
-                  onClick={() => setDeviceType("laptop")}
-                />
-                <SelectCard
-                  icon="Monitor"
-                  accent="purple"
-                  title="Masaüstü PC (Toplama)"
-                  subtitle="CPU, GPU, anakart, RAM, SSD ve kasa+PSU. Soket, RAM tipi ve güç uyumu kontrol edilir."
-                  selected={deviceType === "pc"}
-                  onClick={() => setDeviceType("pc")}
+              <div className="lg:sticky lg:top-6 lg:self-start">
+                <RequirementBars
+                  programs={programs}
+                  selected={selectedPrograms}
+                  title="Sistem gereksinimi"
+                  hint="Program seçtikçe güncellenir."
                 />
               </div>
             </div>
-          )}
+          </>
+        )}
 
-          {step === 3 && result && (
+        {step === 2 && (
+          <>
+            <Heading title="Laptop mı, toplama PC mi?" hint="Laptop için üç öneri, PC için birbiriyle uyumlu parça listesi hazırlarız." />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SelectCard
+                icon="Laptop"
+                tone="cyan"
+                title="Laptop"
+                subtitle="Taşınabilir. Fiyat/performans, tam uyumlu ve üst segment olmak üzere üç seçenek."
+                selected={deviceType === "laptop"}
+                onClick={() => setDeviceType("laptop")}
+              />
+              <SelectCard
+                icon="Monitor"
+                tone="purple"
+                title="Masaüstü PC (toplama)"
+                subtitle="İşlemci, ekran kartı, anakart, RAM, SSD ve kasa+PSU. Soket, RAM tipi ve güç uyumu kontrol edilir."
+                selected={deviceType === "pc"}
+                onClick={() => setDeviceType("pc")}
+              />
+            </div>
+          </>
+        )}
+
+        {step === 3 && result && (
+          <>
+            <Heading
+              title={result.device_type === "laptop" ? "Sana uygun 3 laptop" : "Uyumlu PC parçaları"}
+              hint={`${profession?.name} için ${selectedPrograms.map((p) => p.name).join(", ")}.`}
+            />
             <div className="space-y-6">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold text-white">
-                    {result.device_type === "laptop" ? "Sana uygun 3 laptop" : "Uyumlu PC bileşenleri"}
-                  </h2>
-                  <p className="text-slate-400">
-                    {profession?.name} · {selected.size} program · {result.device_type === "laptop" ? <Laptop className="inline" size={14} /> : <Monitor className="inline" size={14} />}
-                  </p>
-                </div>
-              </div>
-              <RequirementsCard requirements={result.requirements} />
+              <RequirementBars
+                programs={programs}
+                selected={selectedPrograms}
+                requirements={result.requirements}
+                title="Sistem gereksinimi"
+                hint="Her bileşen için en yüksek değer alındı. Tikler seçtiğin programların tek tek ihtiyacını gösterir."
+              />
+              <CostLegend settings={result.settings} />
               {result.device_type === "laptop" ? (
                 <LaptopResults laptops={result.laptops} settings={result.settings} />
               ) : (
                 <PcResults components={result.components} settings={result.settings} />
               )}
+              <p className="text-xs text-mist">Fiyatlar admin panelinden girilen örnek verilerdir; mağaza linkleri arama sayfasına gider.</p>
             </div>
-          )}
-        </section>
+          </>
+        )}
+      </section>
 
-        {/* Navigasyon */}
-        <footer className="mt-10 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-            className={btnGhost}
-            disabled={step === 0}
-            style={{ visibility: step === 0 ? "hidden" : "visible" }}
-          >
-            <ArrowLeft size={16} /> Geri
+      <footer className="mt-10 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
+          className={btnGhost}
+          style={{ visibility: step === 0 ? "hidden" : "visible" }}
+        >
+          <ArrowLeft size={16} /> Geri
+        </button>
+        {step < 2 && (
+          <button type="button" onClick={() => setStep(step + 1)} disabled={!canNext} className={btnPrimary}>
+            Devam <ArrowRight size={16} />
           </button>
-          {step < 2 && (
-            <button type="button" onClick={() => setStep(step + 1)} disabled={!canNext} className={btnPrimary}>
-              Devam <ArrowRight size={16} />
-            </button>
-          )}
-          {step === 2 && (
-            <button type="button" onClick={runMatch} disabled={!canNext || loading} className={btnPrimary}>
-              {loading ? "Hesaplanıyor…" : "Sistemi Öner"} <Sparkles size={16} />
-            </button>
-          )}
-          {step === 3 && (
-            <button type="button" onClick={reset} className={btnPrimary}>
-              <RotateCcw size={16} /> Yeni eşleştirme
-            </button>
-          )}
-        </footer>
-      </main>
-    </div>
+        )}
+        {step === 2 && (
+          <button type="button" onClick={runMatch} disabled={!canNext || loading} className={btnPrimary}>
+            {loading ? "Hesaplanıyor…" : "Sistemi öner"} <ArrowRight size={16} />
+          </button>
+        )}
+        {step === 3 && (
+          <button type="button" onClick={reset} className={btnPrimary}>
+            <RotateCcw size={16} /> Yeni eşleştirme
+          </button>
+        )}
+      </footer>
+    </main>
   );
 }

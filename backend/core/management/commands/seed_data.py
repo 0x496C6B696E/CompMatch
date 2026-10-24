@@ -39,7 +39,7 @@ SEARCH_URL = {s[0]: s[3] for s in STORES}
 PROFESSIONS = [
     ("Grafik / UI Dizayner", "Palette", "Photoshop, Illustrator, Figma ile görsel tasarım"),
     ("Video Editör", "Clapperboard", "Premiere, After Effects, DaVinci ile kurgu ve renk"),
-    ("Data Analist", "PieChart", "Power BI, Excel, Python ile veri analizi"),
+    ("Data Analist", "ChartPie", "Power BI, Excel, Python ile veri analizi"),
     ("3D Mimar / Modelleme", "Box", "Blender, AutoCAD, 3ds Max ile modelleme ve render"),
     ("Yazılımcı", "Code", "VS Code, Docker, Android Studio ile geliştirme"),
 ]
