@@ -1,14 +1,16 @@
 """
 CompMatch — Django settings (localhost-only development).
 """
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Yerel geliştirme anahtarı. Bu uygulama yalnızca localhost'ta çalışır.
-SECRET_KEY = "django-insecure-compmatch-local-dev-key-change-if-ever-deployed"
+# Bu uygulama yalnızca localhost'ta çalışır; varsayılanlar sıfır-konfigürasyon geliştirme içindir.
+# Dışarıya açılacaksa DJANGO_SECRET_KEY ve DJANGO_DEBUG=0 ortam değişkenleriyle ezin.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-compmatch-local-dev-key")
 
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 

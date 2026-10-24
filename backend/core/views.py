@@ -1,4 +1,5 @@
 from rest_framework import status, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -25,7 +26,11 @@ class ProgramViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = Program.objects.prefetch_related("professions")
         profession = self.request.query_params.get("profession")
-        return qs.filter(professions__id=profession) if profession else qs
+        if not profession:
+            return qs
+        if not profession.isdigit():
+            raise ValidationError({"profession": "Geçersiz meslek id."})
+        return qs.filter(professions__id=int(profession))
 
 
 class MatchView(APIView):

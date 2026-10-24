@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* Ponytale tasarım dili: derin uzay karanlığı + neon vurgular */
+@theme {
+  --color-space: #090a0f;
+  --color-surface: #12141d;
+  --color-indigo-p: #6366f1;
+  --color-purple-p: #a855f7;
+  --color-cyan-p: #06b6d4;
+  --color-green-p: #10b981;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-glow: glow 2.4s ease-in-out infinite;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 18px rgba(16, 185, 129, 0.35); }
+    50% { box-shadow: 0 0 32px rgba(16, 185, 129, 0.7); }
+  }
+}
+
+html { color-scheme: dark; }
+body {
+  @apply bg-space text-slate-200 antialiased;
+  min-height: 100vh;
+}
+
+/* Tüm cam katmanlar aynı yüzeyi paylaşır */
+.glass { @apply backdrop-blur-xl bg-white/[0.03] border border-white/[0.08]; }
