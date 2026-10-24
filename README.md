@@ -35,10 +35,10 @@ CompMatch/
         └── components/
             ├── Stepper.jsx               # Akışkan ilerleme çubuğu
             ├── SelectCard.jsx            # Bento seçim kartı (hover yükselme, neon ring)
-            ├── RequirementsCard.jsx      # Min / Önerilen gereksinim tablosu
+            ├── RequirementBars.jsx       # Min / Önerilen benchmark çubukları, program tikleri
             ├── LaptopResults.jsx         # 3 laptop (Fiyat/Perf · Önerilen · Pro)
             ├── PcResults.jsx             # 6 uyumlu bileşen + toplam maliyet
-            ├── PriceCompare.jsx          # Bakü vs Global + gümrük tablosu, "En Karlı Seçenek" rozeti
+            ├── PriceCompare.jsx          # Bakü vs Global maliyet çubukları, "En Karlı Seçenek" rozeti
             └── Icon.jsx                  # Admin'den gelen Lucide ikon adını çözer
 ```
 
