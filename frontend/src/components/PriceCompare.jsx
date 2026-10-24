@@ -6,7 +6,8 @@ const thresholdAzn = (settings) => Number(settings.duty_free_limit_usd) * Number
 
 function StoreName({ store, url, updatedAt }) {
   const title = updatedAt ? new Date(updatedAt).toLocaleDateString() : undefined;
-  return url ? (
+  const safe = /^https?:\/\//i.test(url || ""); // admin/scraper'dan gelen link yalnızca http(s) ise tıklanır
+  return safe ? (
     <a href={url} target="_blank" rel="noreferrer" title={title} className="inline-flex max-w-full items-center gap-1 text-snow hover:underline">
       <span className="truncate">{store}</span> <ExternalLink size={12} className="shrink-0 text-mist" />
     </a>

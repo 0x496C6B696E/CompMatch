@@ -11,7 +11,7 @@ import json
 import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 
@@ -30,6 +30,14 @@ class Offer:
     url: str
     in_stock: bool = True
     verified: bool = False  # strateji ürünü kendi doğruladı (ad benzerliği tekrar aranmaz)
+
+
+def safe_url(candidate, base):
+    """Çekilen linki güvenli hale getirir: göreli ise base'e göre çözülür; http(s) değilse ya da
+    başka bir host'a gidiyorsa (javascript:, data:, üçüncü taraf) sayfanın kendi URL'si kullanılır."""
+    u = urljoin(base, (candidate or "").strip())
+    p, b = urlsplit(u), urlsplit(base)
+    return u if p.scheme in ("http", "https") and p.hostname == b.hostname else base
 
 
 def _decimal(text):
@@ -74,7 +82,7 @@ def irshad_search(product_name, max_pages=3):
         price_el = card.select_one(".product__price__current .new-price") or card.select_one(".product__price__current")
         price = _decimal(price_el.get_text(" ", strip=True)) if price_el else None
         if a and price:
-            offers.append(Offer(a.get_text(" ", strip=True), price, "AZN", a.get("href", "")))
+            offers.append(Offer(a.get_text(" ", strip=True), price, "AZN", safe_url(a.get("href"), url)))
 
     by_title = [o for o in offers if match.similarity(product_name, o.title) >= 0.75]
     if by_title:
@@ -124,7 +132,7 @@ def offer_from_jsonld(product, url):
         return None
     availability = str(offers.get("availability", "")).lower()
     in_stock = "outofstock" not in availability and "soldout" not in availability
-    return Offer(product.get("name", ""), price, offers.get("priceCurrency") or "AZN", offers.get("url") or url, in_stock)
+    return Offer(product.get("name", ""), price, offers.get("priceCurrency") or "AZN", safe_url(offers.get("url"), url), in_stock)
 
 
 def jsonld_sitemap(sitemaps, contains="", max_pages=2):

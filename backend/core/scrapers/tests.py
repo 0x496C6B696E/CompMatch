@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.test import SimpleTestCase
 
 from . import match, passmark
-from .stores import jsonld_product, offer_from_jsonld, page_has_required
+from .stores import jsonld_product, offer_from_jsonld, page_has_required, safe_url
 
 
 class MatchTest(SimpleTestCase):
@@ -83,3 +83,12 @@ class JsonLdTest(SimpleTestCase):
         offer = offer_from_jsonld(jsonld_product(page), "https://example.az/p")
         self.assertEqual((offer.price, offer.currency, offer.in_stock, offer.url), (Decimal("2999.99"), "AZN", False, "https://example.az/p"))
         self.assertIsNone(offer_from_jsonld({"offers": {"price": "0"}}, "u"))  # 0 = fiyat yok
+
+    def test_scraped_urls_are_sanitized(self):
+        base = "https://icomp.az/p.html"
+        self.assertEqual(safe_url("javascript:alert(1)", base), base)
+        self.assertEqual(safe_url("https://evil.example/x", base), base)
+        self.assertEqual(safe_url("/mehsullar/abc", base), "https://icomp.az/mehsullar/abc")
+        self.assertEqual(safe_url(None, base), base)
+        offer = offer_from_jsonld({"name": "X", "offers": {"price": "5", "url": "data:text/html,hi"}}, base)
+        self.assertEqual(offer.url, base)
